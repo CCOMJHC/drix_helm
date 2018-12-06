@@ -106,19 +106,22 @@ void sendPath()
         p1[1] = current_path[0].longitude;
         p2[0] = current_path[1].latitude;
         p2[1] = current_path[1].longitude;
+        std::cerr << "p1: " << p1[0] << "," << p1[1] << " p2: " << p2[0] << "," << p2[1] << std::endl;
         
         vehicle_position[0] = current_position.latitude;
         vehicle_position[1] = current_position.longitude;
                 
         auto path_azimuth_distance = gz4d::geo::WGS84::Ellipsoid::inverse(p1,p2);
         auto vehicle_azimuth_distance = gz4d::geo::WGS84::Ellipsoid::inverse(p1,vehicle_position);
+
+        std::cerr << "path azimuth: " << path_azimuth_distance.first << " distance: " << path_azimuth_distance.second << std::endl;
         
-        double error_azimuth = vehicle_azimuth_distance.first = path_azimuth_distance.first;
+        double error_azimuth = vehicle_azimuth_distance.first - path_azimuth_distance.first;
         double sin_error_azimuth = sin(error_azimuth*M_PI/180.0);
         double cos_error_azimuth = cos(error_azimuth*M_PI/180.0);
         
         double progress = vehicle_azimuth_distance.second*cos_error_azimuth;
-        
+        std::cerr << "progress: " << progress << std::endl;
         auto startPoint = gz4d::geo::WGS84::Ellipsoid::direct(p1,path_azimuth_distance.first,progress);
         
         mdt_msgs::GeoPathPoint gpoint1,gpoint2;
@@ -131,15 +134,6 @@ void sendPath()
         gpoint2.lat = p2[0];
         gpoint2.lon = p2[1];
         gpath.points.push_back(gpoint2);
-        
-//         for(auto ll: current_path)
-//         {
-//             mdt_msgs::GeoPathPoint gpoint;
-//             gpoint.speed = 4.0;
-//             gpoint.lat = ll.latitude;
-//             gpoint.lon = ll.longitude;
-//             gpath.points.push_back(gpoint);
-//         }
     }
     else
     {
@@ -204,7 +198,7 @@ int main(int argc, char **argv)
     ros::Subscriber gps_sub = n.subscribe("/gps",10,gpsCallback);
     ros::Subscriber active_sub = n.subscribe("/active",10,activeCallback);
     ros::Subscriber helm_mode_sub = n.subscribe("/helm_mode",10,helmModeCallback);
-    ros::Subscriber current_path_sub = n.subscribe("/project11/current_path",10,currentPathCallback);
+    ros::Subscriber current_path_sub = n.subscribe("/project11/mission_manager/current_path",10,currentPathCallback);
     
     ros::spin();
     
