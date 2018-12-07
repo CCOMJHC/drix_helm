@@ -23,6 +23,11 @@ std::string helm_mode;
 
 mdt_msgs::Gps last_gps;
 
+double js_turn_rate;
+double js_speed;
+ros::Time last_js_time;
+bool joystick_override = false;
+
 struct LatLong
 {
     double latitude;
@@ -37,6 +42,14 @@ std::string boolToString(bool value)
     if(value)
         return "true";
     return "false";
+}
+
+void twistCallback(const geometry_msgs::TwistStamped::ConstPtr& msg)
+{
+    js_speed = msg->twist.linear.x;
+    js_turn_rate = msg->twist.angular.z;
+    
+    last_js_time = msg->header.stamp;
 }
 
 void vehicleSatusCallback(const drix_msgs::DrixOutput::ConstPtr& inmsg)
@@ -54,6 +67,10 @@ void vehicleSatusCallback(const drix_msgs::DrixOutput::ConstPtr& inmsg)
     kv.value = helm_mode;
     hb.values.push_back(kv);
     
+    kv.key = "js_override";
+    kv.value = boolToString(joystick_override);
+    hb.values.push_back(kv);
+
     kv.key = "RPM";
     std::stringstream rpm_str;
     rpm_str << inmsg->thruster_RPM;
@@ -99,41 +116,88 @@ void sendPath()
 {
     mdt_msgs::GeoPath gpath;
     gpath.stamp = ros::Time::now();
-    if(active && !current_path.empty())
+    joystick_override = false;
+    if(active)
     {
-        gz4d::geo::Point<double,gz4d::geo::WGS84::LatLon> p1, p2,vehicle_position;
-        p1[0] = current_path[0].latitude;
-        p1[1] = current_path[0].longitude;
-        p2[0] = current_path[1].latitude;
-        p2[1] = current_path[1].longitude;
-        std::cerr << "p1: " << p1[0] << "," << p1[1] << " p2: " << p2[0] << "," << p2[1] << std::endl;
-        
-        vehicle_position[0] = current_position.latitude;
-        vehicle_position[1] = current_position.longitude;
+        bool doDesired = true;
+        if (!last_js_time.isZero())
+        {
+            if(ros::Time::now()-last_js_time > ros::Duration(.5))
+            {
+                js_speed = 0.0;
+                js_turn_rate = 0.0;
+            }
+            else
+                doDesired = false;
+        }
+
+        if(doDesired)
+        {
+            if(!current_path.empty())
+            {
+                gz4d::geo::Point<double,gz4d::geo::WGS84::LatLon> p1, p2,vehicle_position;
+                p1[0] = current_path[0].latitude;
+                p1[1] = current_path[0].longitude;
+                p2[0] = current_path[1].latitude;
+                p2[1] = current_path[1].longitude;
+                std::cerr << "p1: " << p1[0] << "," << p1[1] << " p2: " << p2[0] << "," << p2[1] << std::endl;
                 
-        auto path_azimuth_distance = gz4d::geo::WGS84::Ellipsoid::inverse(p1,p2);
-        auto vehicle_azimuth_distance = gz4d::geo::WGS84::Ellipsoid::inverse(p1,vehicle_position);
+                vehicle_position[0] = current_position.latitude;
+                vehicle_position[1] = current_position.longitude;
+                        
+                auto path_azimuth_distance = gz4d::geo::WGS84::Ellipsoid::inverse(p1,p2);
+                auto vehicle_azimuth_distance = gz4d::geo::WGS84::Ellipsoid::inverse(p1,vehicle_position);
 
-        std::cerr << "path azimuth: " << path_azimuth_distance.first << " distance: " << path_azimuth_distance.second << std::endl;
-        
-        double error_azimuth = vehicle_azimuth_distance.first - path_azimuth_distance.first;
-        double sin_error_azimuth = sin(error_azimuth*M_PI/180.0);
-        double cos_error_azimuth = cos(error_azimuth*M_PI/180.0);
-        
-        double progress = vehicle_azimuth_distance.second*cos_error_azimuth;
-        std::cerr << "progress: " << progress << std::endl;
-        auto startPoint = gz4d::geo::WGS84::Ellipsoid::direct(p1,path_azimuth_distance.first,progress);
-        
-        mdt_msgs::GeoPathPoint gpoint1,gpoint2;
-        gpoint1.speed = 4.0;
-        gpoint1.lat = startPoint[0];
-        gpoint1.lon = startPoint[1];
-        gpath.points.push_back(gpoint1);
+                std::cerr << "path azimuth: " << path_azimuth_distance.first << " distance: " << path_azimuth_distance.second << std::endl;
+                
+                double error_azimuth = vehicle_azimuth_distance.first - path_azimuth_distance.first;
+                double sin_error_azimuth = sin(error_azimuth*M_PI/180.0);
+                double cos_error_azimuth = cos(error_azimuth*M_PI/180.0);
+                
+                double progress = vehicle_azimuth_distance.second*cos_error_azimuth;
+                std::cerr << "progress: " << progress << std::endl;
+                auto startPoint = gz4d::geo::WGS84::Ellipsoid::direct(p1,path_azimuth_distance.first,progress);
+                
+                mdt_msgs::GeoPathPoint gpoint1,gpoint2;
+                gpoint1.speed = 4.0;
+                gpoint1.lat = startPoint[0];
+                gpoint1.lon = startPoint[1];
+                gpath.points.push_back(gpoint1);
 
-        gpoint2.speed = 4.0;
-        gpoint2.lat = p2[0];
-        gpoint2.lon = p2[1];
-        gpath.points.push_back(gpoint2);
+                gpoint2.speed = 4.0;
+                gpoint2.lat = p2[0];
+                gpoint2.lon = p2[1];
+                gpath.points.push_back(gpoint2);
+            }
+            else
+            {
+                mdt_msgs::GeoPathPoint gpoint;
+                gpoint.speed = 0.0;
+                gpath.points.push_back(gpoint);
+                gpath.points.push_back(gpoint);
+            }
+        }
+        else
+        {
+            // gen path segment from joystick
+            joystick_override = true;
+            gz4d::geo::Point<double,gz4d::geo::WGS84::LatLon> vehicle_position,p2;
+            vehicle_position[0] = current_position.latitude;
+            vehicle_position[1] = current_position.longitude;
+
+            double desired_heading = last_gps.heading - (js_turn_rate*180.0/M_PI);
+            p2 = gz4d::geo::WGS84::Ellipsoid::direct(vehicle_position,desired_heading,20);
+            mdt_msgs::GeoPathPoint gpoint1,gpoint2;
+            gpoint1.speed = js_speed;
+            gpoint1.lat = vehicle_position[0];
+            gpoint1.lon = vehicle_position[1];
+            gpath.points.push_back(gpoint1);
+
+            gpoint2.speed = js_speed;
+            gpoint2.lat = p2[0];
+            gpoint2.lon = p2[1];
+            gpath.points.push_back(gpoint2);
+        }
     }
     else
     {
@@ -185,6 +249,9 @@ void currentPathCallback(const geographic_msgs::GeoPath::ConstPtr& inmsg)
 
 int main(int argc, char **argv)
 {
+    js_speed = 0.0;
+    js_turn_rate = 0.0;
+    
     ros::init(argc, argv, "drix_helm");
     ros::NodeHandle n;
     
@@ -194,6 +261,7 @@ int main(int argc, char **argv)
     heartbeat_pub = n.advertise<marine_msgs::Heartbeat>("/heartbeat", 10);
     backseat_path_pub = n.advertise<mdt_msgs::GeoPath>("/backseat_path", 10);
 
+    ros::Subscriber asv_helm_sub = n.subscribe("/remote/0/cmd_vel",5,twistCallback);
     ros::Subscriber vehicle_state_sub =  n.subscribe("/drix_status",10,vehicleSatusCallback);
     ros::Subscriber gps_sub = n.subscribe("/gps",10,gpsCallback);
     ros::Subscriber active_sub = n.subscribe("/active",10,activeCallback);
