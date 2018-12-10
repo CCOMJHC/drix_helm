@@ -8,6 +8,7 @@
 #include "geometry_msgs/TwistStamped.h"
 #include "std_msgs/Bool.h"
 #include "std_msgs/String.h"
+#include "std_msgs/Float32.h"
 #include "marine_msgs/NavEulerStamped.h"
 #include <vector>
 #include "project11/gz4d_geo.h"
@@ -36,6 +37,8 @@ struct LatLong
 
 std::vector<LatLong> current_path;
 LatLong current_position;
+
+double current_speed;
 
 std::string boolToString(bool value)
 {
@@ -112,6 +115,11 @@ void helmModeCallback(const std_msgs::String::ConstPtr& inmsg)
     helm_mode = inmsg->data;
 }
 
+void currentSpeedCallback(const std_msgs::Float32::ConstPtr& inmsg)
+{
+    current_speed = inmsg->data;
+}
+
 void sendPath()
 {
     mdt_msgs::GeoPath gpath;
@@ -159,12 +167,12 @@ void sendPath()
                 auto startPoint = gz4d::geo::WGS84::Ellipsoid::direct(p1,path_azimuth_distance.first,progress);
                 
                 mdt_msgs::GeoPathPoint gpoint1,gpoint2;
-                gpoint1.speed = 4.0;
+                gpoint1.speed = current_speed;
                 gpoint1.lat = startPoint[0];
                 gpoint1.lon = startPoint[1];
                 gpath.points.push_back(gpoint1);
 
-                gpoint2.speed = 4.0;
+                gpoint2.speed = current_speed;
                 gpoint2.lat = p2[0];
                 gpoint2.lon = p2[1];
                 gpath.points.push_back(gpoint2);
@@ -251,6 +259,7 @@ int main(int argc, char **argv)
 {
     js_speed = 0.0;
     js_turn_rate = 0.0;
+    current_speed = 4.0;
     
     ros::init(argc, argv, "drix_helm");
     ros::NodeHandle n;
@@ -267,6 +276,7 @@ int main(int argc, char **argv)
     ros::Subscriber active_sub = n.subscribe("/active",10,activeCallback);
     ros::Subscriber helm_mode_sub = n.subscribe("/helm_mode",10,helmModeCallback);
     ros::Subscriber current_path_sub = n.subscribe("/project11/mission_manager/current_path",10,currentPathCallback);
+    ros::Subscriber current_speed_sub = n.subscribe("/project11/mission_manager/current_speed", 10, currentSpeedCallback);
     
     ros::spin();
     
