@@ -19,7 +19,7 @@ ros::Publisher speed_pub;
 ros::Publisher heartbeat_pub;
 ros::Publisher backseat_path_pub;
 
-std::string helm_mode;
+std::string piloting_mode;
 
 mdt_msgs::Gps last_gps;
 
@@ -61,8 +61,8 @@ void vehicleSatusCallback(const drix_msgs::DrixOutput::ConstPtr& inmsg)
 
     marine_msgs::KeyValue kv;
 
-    kv.key = "helm_mode";
-    kv.value = helm_mode;
+    kv.key = "piloting_mode";
+    kv.value = piloting_mode;
     hb.values.push_back(kv);
     
     kv.key = "js_override";
@@ -102,7 +102,7 @@ void vehicleSatusCallback(const drix_msgs::DrixOutput::ConstPtr& inmsg)
 
 void helmModeCallback(const std_msgs::String::ConstPtr& inmsg)
 {
-    helm_mode = inmsg->data;
+    piloting_mode = inmsg->data;
 }
 
 void currentSpeedCallback(const std_msgs::Float32::ConstPtr& inmsg)
@@ -115,7 +115,7 @@ void sendPath()
     mdt_msgs::GeoPath gpath;
     gpath.stamp = ros::Time::now();
     joystick_override = false;
-    if(helm_mode != "standby")
+    if(piloting_mode != "standby")
     {
         bool doDesired = true;
         if (!last_js_time.isZero())
@@ -250,7 +250,7 @@ int main(int argc, char **argv)
     js_speed = 0.0;
     js_turn_rate = 0.0;
     current_speed = 4.0;
-    helm_mode = "standby";
+    piloting_mode = "standby";
     
     ros::init(argc, argv, "drix_helm");
     ros::NodeHandle n;
@@ -264,7 +264,7 @@ int main(int argc, char **argv)
     ros::Subscriber asv_helm_sub = n.subscribe("/remote/0/cmd_vel",5,twistCallback);
     ros::Subscriber vehicle_state_sub =  n.subscribe("/drix_status",10,vehicleSatusCallback);
     ros::Subscriber gps_sub = n.subscribe("/gps",10,gpsCallback);
-    ros::Subscriber helm_mode_sub = n.subscribe("/helm_mode",10,helmModeCallback);
+    ros::Subscriber piloting_mode_sub = n.subscribe("/project11/piloting_mode",10,helmModeCallback);
     ros::Subscriber current_path_sub = n.subscribe("/project11/mission_manager/current_path",10,currentPathCallback);
     ros::Subscriber current_speed_sub = n.subscribe("/project11/mission_manager/current_speed", 10, currentSpeedCallback);
     
