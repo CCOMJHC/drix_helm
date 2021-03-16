@@ -11,7 +11,9 @@
 #include "std_msgs/Float32.h"
 #include "marine_msgs/NavEulerStamped.h"
 #include <vector>
-#include "project11/gz4d_geo.h"
+#include "project11/utils.h"
+
+namespace p11 = project11;
 
 ros::Publisher position_pub;
 ros::Publisher heading_pub;
@@ -133,7 +135,7 @@ void sendPath()
         {
             if(!current_path.empty())
             {
-                gz4d::geo::Point<double,gz4d::geo::WGS84::LatLon> p1, p2,vehicle_position;
+                p11::LatLongDegrees p1, p2, vehicle_position;
                 p1[0] = current_path[0].latitude;
                 p1[1] = current_path[0].longitude;
                 p2[0] = current_path[1].latitude;
@@ -143,20 +145,20 @@ void sendPath()
                 vehicle_position[0] = current_position.latitude;
                 vehicle_position[1] = current_position.longitude;
                         
-                auto path_azimuth_distance = gz4d::geo::WGS84::Ellipsoid::inverse(p1,p2);
-                auto vehicle_azimuth_distance = gz4d::geo::WGS84::Ellipsoid::inverse(p1,vehicle_position);
+                auto path_azimuth_distance = p11::WGS84::inverse(p1,p2);
+                auto vehicle_azimuth_distance = p11::WGS84::inverse(p1,vehicle_position);
 
-                std::cerr << "path azimuth: " << path_azimuth_distance.first << " distance: " << path_azimuth_distance.second << std::endl;
+                std::cerr << "path azimuth: " << path_azimuth_distance.first.value() << " distance: " << path_azimuth_distance.second << std::endl;
                 
-                double error_azimuth = vehicle_azimuth_distance.first - path_azimuth_distance.first;
-                double sin_error_azimuth = sin(error_azimuth*M_PI/180.0);
-                double cos_error_azimuth = cos(error_azimuth*M_PI/180.0);
+                p11::AngleRadians error_azimuth = vehicle_azimuth_distance.first - path_azimuth_distance.first;
+                double sin_error_azimuth = sin(error_azimuth);
+                double cos_error_azimuth = cos(error_azimuth);
                 
                 double progress = vehicle_azimuth_distance.second*cos_error_azimuth;
                 std::cerr << "progress: " << progress << std::endl;
-                auto startPoint = gz4d::geo::WGS84::Ellipsoid::direct(p1,path_azimuth_distance.first,progress);
+                auto startPoint = p11::WGS84::direct(p1,path_azimuth_distance.first,progress);
                 
-                mdt_msgs::GeoPathPoint gpoint1,gpoint2;
+                mdt_msgs::GeoPathPoint gpoint1, gpoint2;
                 gpoint1.speed = current_speed;
                 gpoint1.lat = startPoint[0];
                 gpoint1.lon = startPoint[1];
@@ -179,12 +181,12 @@ void sendPath()
         {
             // gen path segment from joystick
             joystick_override = true;
-            gz4d::geo::Point<double,gz4d::geo::WGS84::LatLon> vehicle_position,p2;
+            p11::LatLongDegrees vehicle_position, p2;
             vehicle_position[0] = current_position.latitude;
             vehicle_position[1] = current_position.longitude;
 
-            double desired_heading = last_gps.heading - (js_turn_rate*180.0/M_PI);
-            p2 = gz4d::geo::WGS84::Ellipsoid::direct(vehicle_position,desired_heading,20);
+            p11::AngleRadians desired_heading = p11::AngleDegrees(last_gps.heading) - p11::AngleRadians(js_turn_rate);
+            p2 = p11::WGS84::direct(vehicle_position,desired_heading,20);
             mdt_msgs::GeoPathPoint gpoint1,gpoint2;
             gpoint1.speed = js_speed;
             gpoint1.lat = vehicle_position[0];
