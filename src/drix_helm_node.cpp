@@ -2,33 +2,32 @@
 #include "mdt_msgs/Gps.h"
 #include "mdt_msgs/GeoPath.h"
 #include "drix_msgs/DrixOutput.h"
-#include "marine_msgs/Heartbeat.h"
-#include "geographic_msgs/GeoPointStamped.h"
-#include "geographic_msgs/GeoPath.h"
 #include "geometry_msgs/TwistStamped.h"
+#include "marine_msgs/Heartbeat.h"
+#include "marine_msgs/Helm.h"
+#include "sensor_msgs/NavSatFix.h"
+#include "sensor_msgs/Imu.h"
 #include "std_msgs/Bool.h"
 #include "std_msgs/String.h"
 #include "std_msgs/Float32.h"
-#include "marine_msgs/NavEulerStamped.h"
 #include <vector>
 #include "project11/utils.h"
 
 namespace p11 = project11;
 
 ros::Publisher position_pub;
-ros::Publisher heading_pub;
-ros::Publisher speed_pub;
+ros::Publisher orientation_pub;
+ros::Publisher velocity_pub;
 ros::Publisher heartbeat_pub;
 ros::Publisher backseat_path_pub;
 
-std::string piloting_mode;
-
 mdt_msgs::Gps last_gps;
 
-double js_turn_rate;
-double js_speed;
-ros::Time last_js_time;
-bool joystick_override = false;
+double rudder;
+double throttle;
+ros::Time last_helm_time;
+
+bool standby;
 
 struct LatLong
 {
@@ -48,12 +47,17 @@ std::string boolToString(bool value)
     return "false";
 }
 
-void twistCallback(const geometry_msgs::TwistStamped::ConstPtr& msg)
+void helmCallback(const marine_msgs::Helm::ConstPtr& msg)
 {
-    js_speed = msg->twist.linear.x;
-    js_turn_rate = msg->twist.angular.z;
+    throttle = msg->throttle;
+    rudder = msg->rudder;
     
-    last_js_time = msg->header.stamp;
+    last_helm_time = msg->header.stamp;
+}
+
+void standbyCallback(const std_msgs::Bool::ConstPtr& msg)
+{
+  standby = msg->data;
 }
 
 void vehicleSatusCallback(const drix_msgs::DrixOutput::ConstPtr& inmsg)
@@ -62,14 +66,6 @@ void vehicleSatusCallback(const drix_msgs::DrixOutput::ConstPtr& inmsg)
     hb.header.stamp = ros::Time::now();
 
     marine_msgs::KeyValue kv;
-
-    kv.key = "piloting_mode";
-    kv.value = piloting_mode;
-    hb.values.push_back(kv);
-    
-    kv.key = "js_override";
-    kv.value = boolToString(joystick_override);
-    hb.values.push_back(kv);
 
     kv.key = "RPM";
     std::stringstream rpm_str;
@@ -91,9 +87,18 @@ void vehicleSatusCallback(const drix_msgs::DrixOutput::ConstPtr& inmsg)
     kv.value = inmsg->drix_clutch;
     hb.values.push_back(kv);
 
-    kv.key = "remote_control_lost";
-    kv.value = boolToString(inmsg->remoteControlLost);
-    hb.values.push_back(kv);
+    if(inmsg->error_code != 0)
+    {
+        kv.key = "error_code";
+        std::stringstream error_code_ss;
+        error_code_ss << inmsg->error_code;
+        kv.value = error_code_ss.str();
+        hb.values.push_back(kv);
+
+        kv.key = "error_string";
+        kv.value = inmsg->error_string;
+        hb.values.push_back(kv);
+    }
     
     kv.key = "keel_state";
     kv.value = inmsg->keel_state;
@@ -102,10 +107,6 @@ void vehicleSatusCallback(const drix_msgs::DrixOutput::ConstPtr& inmsg)
     heartbeat_pub.publish(hb);
 }
 
-void helmModeCallback(const std_msgs::String::ConstPtr& inmsg)
-{
-    piloting_mode = inmsg->data;
-}
 
 void currentSpeedCallback(const std_msgs::Float32::ConstPtr& inmsg)
 {
@@ -116,88 +117,30 @@ void sendPath()
 {
     mdt_msgs::GeoPath gpath;
     gpath.stamp = ros::Time::now();
-    joystick_override = false;
-    if(piloting_mode != "standby")
+    if (!last_helm_time.isZero()&&gpath.stamp-last_helm_time>ros::Duration(.5))
     {
-        bool doDesired = true;
-        if (!last_js_time.isZero())
-        {
-            if(ros::Time::now()-last_js_time > ros::Duration(.5))
-            {
-                js_speed = 0.0;
-                js_turn_rate = 0.0;
-            }
-            else
-                doDesired = false;
-        }
+        throttle = 0.0;
+        rudder = 0.0;
+    }
 
-        if(doDesired)
-        {
-            if(!current_path.empty())
-            {
-                p11::LatLongDegrees p1, p2, vehicle_position;
-                p1[0] = current_path[0].latitude;
-                p1[1] = current_path[0].longitude;
-                p2[0] = current_path[1].latitude;
-                p2[1] = current_path[1].longitude;
-                std::cerr << "p1: " << p1[0] << "," << p1[1] << " p2: " << p2[0] << "," << p2[1] << std::endl;
-                
-                vehicle_position[0] = current_position.latitude;
-                vehicle_position[1] = current_position.longitude;
-                        
-                auto path_azimuth_distance = p11::WGS84::inverse(p1,p2);
-                auto vehicle_azimuth_distance = p11::WGS84::inverse(p1,vehicle_position);
+    if(!standby)
+    {
+        p11::LatLongDegrees vehicle_position, p2;
+        vehicle_position[0] = current_position.latitude;
+        vehicle_position[1] = current_position.longitude;
 
-                std::cerr << "path azimuth: " << path_azimuth_distance.first.value() << " distance: " << path_azimuth_distance.second << std::endl;
-                
-                p11::AngleRadians error_azimuth = vehicle_azimuth_distance.first - path_azimuth_distance.first;
-                double sin_error_azimuth = sin(error_azimuth);
-                double cos_error_azimuth = cos(error_azimuth);
-                
-                double progress = vehicle_azimuth_distance.second*cos_error_azimuth;
-                std::cerr << "progress: " << progress << std::endl;
-                auto startPoint = p11::WGS84::direct(p1,path_azimuth_distance.first,progress);
-                
-                mdt_msgs::GeoPathPoint gpoint1, gpoint2;
-                gpoint1.speed = current_speed;
-                gpoint1.lat = startPoint[0];
-                gpoint1.lon = startPoint[1];
-                gpath.points.push_back(gpoint1);
+        p11::AngleRadians desired_heading = p11::AngleDegrees(last_gps.heading) - p11::AngleRadians(rudder);
+        p2 = p11::WGS84::direct(vehicle_position,desired_heading,20);
+        mdt_msgs::GeoPathPoint gpoint1,gpoint2;
+        gpoint1.speed = throttle*current_speed;
+        gpoint1.lat = vehicle_position[0];
+        gpoint1.lon = vehicle_position[1];
+        gpath.points.push_back(gpoint1);
 
-                gpoint2.speed = current_speed;
-                gpoint2.lat = p2[0];
-                gpoint2.lon = p2[1];
-                gpath.points.push_back(gpoint2);
-            }
-            else
-            {
-                mdt_msgs::GeoPathPoint gpoint;
-                gpoint.speed = 0.0;
-                gpath.points.push_back(gpoint);
-                gpath.points.push_back(gpoint);
-            }
-        }
-        else
-        {
-            // gen path segment from joystick
-            joystick_override = true;
-            p11::LatLongDegrees vehicle_position, p2;
-            vehicle_position[0] = current_position.latitude;
-            vehicle_position[1] = current_position.longitude;
-
-            p11::AngleRadians desired_heading = p11::AngleDegrees(last_gps.heading) - p11::AngleRadians(js_turn_rate);
-            p2 = p11::WGS84::direct(vehicle_position,desired_heading,20);
-            mdt_msgs::GeoPathPoint gpoint1,gpoint2;
-            gpoint1.speed = js_speed;
-            gpoint1.lat = vehicle_position[0];
-            gpoint1.lon = vehicle_position[1];
-            gpath.points.push_back(gpoint1);
-
-            gpoint2.speed = js_speed;
-            gpoint2.lat = p2[0];
-            gpoint2.lon = p2[1];
-            gpath.points.push_back(gpoint2);
-        }
+        gpoint2.speed = throttle*current_speed;
+        gpoint2.lat = p2[0];
+        gpoint2.lon = p2[1];
+        gpath.points.push_back(gpoint2);
     }
     else
     {
@@ -206,69 +149,64 @@ void sendPath()
         gpath.points.push_back(gpoint);
         gpath.points.push_back(gpoint);
     }
+
+
     backseat_path_pub.publish(gpath);
 }
 
 void gpsCallback(const mdt_msgs::Gps::ConstPtr& inmsg)
 {
     last_gps = *inmsg;
-    
-    geographic_msgs::GeoPointStamped gps;
-    gps.header = inmsg->header;
-    gps.position.latitude = inmsg->latitude;
-    gps.position.longitude = inmsg->longitude;
-    position_pub.publish(gps);
-    
+
+    sensor_msgs::NavSatFix nsf;
+    nsf.header = inmsg->header;
+    nsf.latitude = inmsg->latitude;
+      nsf.longitude = inmsg->longitude;
+    nsf.altitude = inmsg->altitude;
+    position_pub.publish(nsf);
+
     current_position.latitude = inmsg->latitude;
     current_position.longitude = inmsg->longitude;
 
     geometry_msgs::TwistStamped ts;
     ts.header = inmsg->header;
     ts.twist.linear.x = inmsg->sog;
-    speed_pub.publish(ts);
+    velocity_pub.publish(ts);
 
-    marine_msgs::NavEulerStamped nes;
-    nes.header = inmsg->header;
-    nes.orientation.heading = inmsg->heading;
-    heading_pub.publish(nes);
-    
+    sensor_msgs::Imu imu;
+    imu.header = inmsg->header;
+    tf2::Quaternion q;
+    q.setRPY(0, 0, M_PI*(90-inmsg->heading)/180.0);
+    tf2::convert(q, imu.orientation);
+    imu.angular_velocity_covariance[0] = -1;
+    imu.linear_acceleration_covariance[0] = -1;
+    orientation_pub.publish(imu);
+
     sendPath();
-}
-
-void currentPathCallback(const geographic_msgs::GeoPath::ConstPtr& inmsg)
-{
-    current_path.clear();
-    for(auto pose: inmsg->poses)
-    {
-        LatLong ll;
-        ll.latitude = pose.pose.position.latitude;
-        ll.longitude = pose.pose.position.longitude;
-        current_path.push_back(ll);
-    }
 }
 
 int main(int argc, char **argv)
 {
-    js_speed = 0.0;
-    js_turn_rate = 0.0;
     current_speed = 4.0;
-    piloting_mode = "standby";
-    
+    throttle = 0.0;
+    rudder = 0.0;
+    standby = true;
+
     ros::init(argc, argv, "drix_helm");
     ros::NodeHandle n;
     
-    heading_pub = n.advertise<marine_msgs::NavEulerStamped>("/heading",1);
-    position_pub = n.advertise<geographic_msgs::GeoPointStamped>("/position",1);
-    speed_pub = n.advertise<geometry_msgs::TwistStamped>("/sog",1);
-    heartbeat_pub = n.advertise<marine_msgs::Heartbeat>("/heartbeat", 10);
+    orientation_pub = n.advertise<sensor_msgs::Imu>("nav/orientation",1);
+    position_pub = n.advertise<sensor_msgs::NavSatFix>("nav/position",1);
+    velocity_pub = n.advertise<geometry_msgs::TwistStamped>("nav/velocity",1);
+    heartbeat_pub = n.advertise<marine_msgs::Heartbeat>("project11/status/helm", 10);
+
     backseat_path_pub = n.advertise<mdt_msgs::GeoPath>("/backseat_path", 10);
 
-    ros::Subscriber asv_helm_sub = n.subscribe("/remote/0/cmd_vel",5,twistCallback);
+    ros::Subscriber asv_helm_sub = n.subscribe("control/helm", 5, helmCallback);
+    ros::Subscriber standby_sub = n.subscribe("piloting_mode/standby/active", 10,standbyCallback);
+
     ros::Subscriber vehicle_state_sub =  n.subscribe("/drix_status",10,vehicleSatusCallback);
     ros::Subscriber gps_sub = n.subscribe("/gps",10,gpsCallback);
-    ros::Subscriber piloting_mode_sub = n.subscribe("/project11/piloting_mode",10,helmModeCallback);
-    ros::Subscriber current_path_sub = n.subscribe("/project11/mission_manager/current_path",10,currentPathCallback);
-    ros::Subscriber current_speed_sub = n.subscribe("/project11/mission_manager/current_speed", 10, currentSpeedCallback);
     
     ros::spin();
     
