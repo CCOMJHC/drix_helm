@@ -218,7 +218,7 @@ void gpsCallback(const mdt_msgs::Gps::ConstPtr& inmsg)
 
 int main(int argc, char **argv)
 {
-    current_speed = 4.0;
+    current_speed = 5.0;
     throttle = 0.0;
     rudder = 0.0;
     standby = true;
