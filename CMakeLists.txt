@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rosbag
   project11
+  geographic_visualization_msgs
 )
 
 catkin_package(
