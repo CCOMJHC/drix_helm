@@ -13,7 +13,7 @@ void aisCallback(const mdt_msgs::StampedString::ConstPtr& msg)
   send(out_socket, &(msg->data.front()), msg->data.size(), 0);
 }
 
-int connect(std::string const &host, uint16_t port)
+void connect(std::string const &host, uint16_t port)
 {
   struct addrinfo hints = {0}, *addresses;
     
@@ -59,6 +59,8 @@ int main(int argc, char **argv)
 
   std::string host = ros::param::param<std::string>("~host", "localhost");
   uint16_t port = ros::param::param("~port", 4010);
+
+  connect(host, port);
 
   ros::Subscriber ais_sub = n.subscribe("/raw_ais", 5, aisCallback);
   ros::spin();
