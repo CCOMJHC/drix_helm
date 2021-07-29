@@ -36,6 +36,9 @@ target_link_libraries(${PROJECT_NAME}_node
     ${catkin_LIBRARIES}
 )
 
+add_executable(ais_to_udp src/ais_to_udp)
+target_link_libraries(ais_to_udp ${catkin_LIBRARIES})
+
 install(TARGETS ${PROJECT_NAME}_node
    ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
