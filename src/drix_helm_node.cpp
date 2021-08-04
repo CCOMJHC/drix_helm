@@ -229,16 +229,16 @@ int main(int argc, char **argv)
     frame_id = ros::param::param<std::string>("~frame_id", "base_link");
 
 
-    orientation_pub = n.advertise<sensor_msgs::Imu>("nav/oem/orientation",1);
-    position_pub = n.advertise<sensor_msgs::NavSatFix>("nav/oem/position",1);
-    velocity_pub = n.advertise<geometry_msgs::TwistWithCovarianceStamped>("nav/oem/velocity",1);
+    orientation_pub = n.advertise<sensor_msgs::Imu>("project11/nav/oem/orientation",1);
+    position_pub = n.advertise<sensor_msgs::NavSatFix>("project11/nav/oem/position",1);
+    velocity_pub = n.advertise<geometry_msgs::TwistWithCovarianceStamped>("project11/nav/oem/velocity",1);
     heartbeat_pub = n.advertise<marine_msgs::Heartbeat>("project11/status/helm", 10);
 
     backseat_path_pub = n.advertise<mdt_msgs::GeoPath>("/backseat_path", 10);
     display_pub = n.advertise<geographic_visualization_msgs::GeoVizItem>("project11/display",5);
 
-    ros::Subscriber asv_helm_sub = n.subscribe("control/helm", 5, helmCallback);
-    ros::Subscriber standby_sub = n.subscribe("piloting_mode/standby/active", 10,standbyCallback);
+    ros::Subscriber asv_helm_sub = n.subscribe("project11/control/helm", 5, helmCallback);
+    ros::Subscriber standby_sub = n.subscribe("project11/piloting_mode/standby/active", 10,standbyCallback);
 
     ros::Subscriber vehicle_state_sub =  n.subscribe("/drix_status",10,vehicleSatusCallback);
     ros::Subscriber gps_sub = n.subscribe("/gps",10,gpsCallback);
