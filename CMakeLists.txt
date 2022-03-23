@@ -18,7 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES asv_helm
-  CATKIN_DEPENDS geometry_msgs roscpp project11
+  CATKIN_DEPENDS geometry_msgs roscpp project11 mdt_msgs
 #  DEPENDS system_lib
 )
 
@@ -37,6 +37,8 @@ target_link_libraries(${PROJECT_NAME}_node
 )
 
 add_executable(ais_to_udp src/ais_to_udp)
+add_dependencies(ais_to_udp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(ais_to_udp marine_msgs_gencpp drix_msgs_gencpp mdt_msgs_gencpp)
 target_link_libraries(ais_to_udp ${catkin_LIBRARIES})
 
 install(TARGETS ${PROJECT_NAME}_node

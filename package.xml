@@ -15,6 +15,7 @@
   <depend>roscpp</depend>
   <depend>project11</depend>
   <depend>drix_msgs</depend>
+  <depend>mdt_msgs</depend>
   <depend>geographic_visualization_msgs</depend>
 
   <export>
