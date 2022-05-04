@@ -196,12 +196,30 @@ void vehicleSatusCallback(const drix_msgs::DrixOutput::ConstPtr& inmsg)
         hb.values.push_back(kv);
     }
 
-    if(inmsg->shutdown_requested)
+    // if(inmsg->shutdown_requested)
+    // {
+    //     kv.key = "shutdown_requested";
+    //     kv.value = "True";
+    //     hb.values.push_back(kv);
+    // }
+
+    kv.key = "shutdown_status";
+    switch (inmsg->shutdown_status)
     {
-        kv.key = "shutdown_requested";
-        kv.value = "True";
-        hb.values.push_back(kv);
+    case drix_msgs::DrixOutput::NO_SHUTDOWN_:
+        kv.value = "No Shutdown";
+        break;
+    case drix_msgs::DrixOutput::SHUTDOWN_REQUESTED_:
+        kv.value = "Shutdown Requested";
+        break;
+    case drix_msgs::DrixOutput::REBOOT_REQUESTED_:
+        kv.value = "Reboot Requested";
+        break;
+    default:
+        kv.value = "Unknown";
     }
+    hb.values.push_back(kv);
+
 
     heartbeat_pub.publish(hb);
 }
