@@ -47,6 +47,11 @@ add_dependencies(range_to_mothership ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catki
 add_dependencies(range_to_mothership mdt_msgs_gencpp)
 target_link_libraries(range_to_mothership ${catkin_LIBRARIES})
 
+add_executable(range_to_drix src/range_to_drix.cpp)
+add_dependencies(range_to_drix ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(range_to_drix mdt_msgs_gencpp)
+target_link_libraries(range_to_drix ${catkin_LIBRARIES})
+
 
 install(TARGETS ${PROJECT_NAME}_node
    ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
