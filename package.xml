@@ -11,7 +11,6 @@
   <buildtool_depend>catkin</buildtool_depend>
   <depend>geometry_msgs</depend>
   <depend>geographic_msgs</depend>
-  <depend>marine_msgs</depend>
   <depend>roscpp</depend>
   <depend>project11</depend>
   <depend>project11_msgs</depend>

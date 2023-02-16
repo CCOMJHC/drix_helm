@@ -3,8 +3,8 @@
 #include "mdt_msgs/GeoPath.h"
 #include "drix_msgs/DrixOutput.h"
 #include "geometry_msgs/TwistWithCovarianceStamped.h"
-#include "marine_msgs/Heartbeat.h"
-#include "marine_msgs/Helm.h"
+#include "project11_msgs/Heartbeat.h"
+#include "project11_msgs/Helm.h"
 #include "sensor_msgs/NavSatFix.h"
 #include "sensor_msgs/Imu.h"
 #include "std_msgs/Bool.h"
@@ -51,7 +51,7 @@ std::string boolToString(bool value)
     return "false";
 }
 
-void helmCallback(const marine_msgs::Helm::ConstPtr& msg)
+void helmCallback(const project11_msgs::Helm::ConstPtr& msg)
 {
     throttle = msg->throttle;
     rudder = msg->rudder;
@@ -66,10 +66,10 @@ void standbyCallback(const std_msgs::Bool::ConstPtr& msg)
 
 void vehicleSatusCallback(const drix_msgs::DrixOutput::ConstPtr& inmsg)
 {
-    marine_msgs::Heartbeat hb;
+    project11_msgs::Heartbeat hb;
     hb.header.stamp = ros::Time::now();
 
-    marine_msgs::KeyValue kv;
+    project11_msgs::KeyValue kv;
 
     kv.key = "RPM";
     std::stringstream rpm_str;
@@ -345,7 +345,7 @@ int main(int argc, char **argv)
     orientation_pub = n.advertise<sensor_msgs::Imu>("project11/nav/oem/orientation",1);
     position_pub = n.advertise<sensor_msgs::NavSatFix>("project11/nav/oem/position",1);
     velocity_pub = n.advertise<geometry_msgs::TwistWithCovarianceStamped>("project11/nav/oem/velocity",1);
-    heartbeat_pub = n.advertise<marine_msgs::Heartbeat>("project11/status/helm", 10);
+    heartbeat_pub = n.advertise<project11_msgs::Heartbeat>("project11/status/helm", 10);
 
     backseat_path_pub = n.advertise<mdt_msgs::GeoPath>("/backseat_path", 10);
     display_pub = n.advertise<geographic_visualization_msgs::GeoVizItem>("project11/display",5);

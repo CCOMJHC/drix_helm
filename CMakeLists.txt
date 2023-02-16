@@ -6,7 +6,7 @@ add_compile_options(-std=c++11)
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   geographic_msgs
-  marine_msgs
+  project11_msgs
   drix_msgs
   mdt_msgs
   roscpp
@@ -31,7 +31,7 @@ include_directories(
 add_executable(${PROJECT_NAME}_node src/drix_helm_node.cpp)
 
 add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_dependencies(${PROJECT_NAME}_node marine_msgs_gencpp drix_msgs_gencpp mdt_msgs_gencpp)
+add_dependencies(${PROJECT_NAME}_node project11_msgs_gencpp drix_msgs_gencpp mdt_msgs_gencpp)
 
 target_link_libraries(${PROJECT_NAME}_node
     ${catkin_LIBRARIES}
@@ -39,7 +39,7 @@ target_link_libraries(${PROJECT_NAME}_node
 
 add_executable(ais_to_udp src/ais_to_udp.cpp)
 add_dependencies(ais_to_udp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_dependencies(ais_to_udp marine_msgs_gencpp drix_msgs_gencpp mdt_msgs_gencpp)
+add_dependencies(ais_to_udp project11_msgs_gencpp drix_msgs_gencpp mdt_msgs_gencpp)
 target_link_libraries(ais_to_udp ${catkin_LIBRARIES})
 
 add_executable(range_to_mothership src/range_to_mothership.cpp)
