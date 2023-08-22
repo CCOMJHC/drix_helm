@@ -353,8 +353,8 @@ int main(int argc, char **argv)
     ros::Subscriber asv_helm_sub = n.subscribe("project11/control/helm", 5, helmCallback);
     ros::Subscriber standby_sub = n.subscribe("project11/piloting_mode/standby/active", 10,standbyCallback);
 
-    ros::Subscriber vehicle_state_sub =  n.subscribe("/drix_status",10,vehicleSatusCallback);
-    ros::Subscriber gps_sub = n.subscribe("/gps",10,gpsCallback);
+    ros::Subscriber vehicle_state_sub =  n.subscribe("/hardware/drix_status",10,vehicleSatusCallback);
+    ros::Subscriber gps_sub = n.subscribe("/pos/gps",10,gpsCallback);
     
     ros::spin();
     
