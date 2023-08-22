@@ -66,159 +66,159 @@ void standbyCallback(const std_msgs::Bool::ConstPtr& msg)
 
 void vehicleSatusCallback(const drix_msgs::DrixOutput::ConstPtr& inmsg)
 {
-    project11_msgs::Heartbeat hb;
-    hb.header.stamp = ros::Time::now();
+  project11_msgs::Heartbeat hb;
+  hb.header.stamp = ros::Time::now();
 
-    project11_msgs::KeyValue kv;
+  project11_msgs::KeyValue kv;
 
-    kv.key = "RPM";
-    std::stringstream rpm_str;
-    rpm_str << inmsg->thruster_RPM;
-    kv.value = rpm_str.str();
-    hb.values.push_back(kv);
+  kv.key = "RPM";
+  std::stringstream rpm_str;
+  rpm_str << inmsg->thruster_RPM;
+  kv.value = rpm_str.str();
+  hb.values.push_back(kv);
     
-    kv.key = "rudder_angle";
-    std::stringstream rudder_str;
-    rudder_str << inmsg->rudderAngle_deg;
-    kv.value = rudder_str.str();
+  kv.key = "rudder_angle";
+  std::stringstream rudder_str;
+  rudder_str << inmsg->rudderAngle_deg;
+  kv.value = rudder_str.str();
+  hb.values.push_back(kv);
+
+  kv.key = "fuel_level";
+  std::stringstream fuel_level_str;
+  fuel_level_str << int(inmsg->gasolineLevel_percent);
+  kv.value = fuel_level_str.str();
+  hb.values.push_back(kv);
+
+  kv.key = "drix_mode";
+  switch (inmsg->drix_mode)
+  {
+  case drix_msgs::DrixOutput::MODE_DOCKING_:
+    kv.value = "Docking";
+    break;
+  case drix_msgs::DrixOutput::MODE_MANUAL_:
+    kv.value = "Manual";
+    break;
+  case drix_msgs::DrixOutput::MODE_AUTO_:
+    kv.value = "Auto";
+    break;
+  default:
+    kv.value = "Unknown";
+  }
+  hb.values.push_back(kv);
+
+  kv.key = "emergency";
+  if(inmsg->emergency_mode)
+    kv.value = "True";
+  else
+    kv.value = "False";
+  hb.values.push_back(kv);
+
+  kv.key = "low_power_mode";
+  if(inmsg->low_power_mode)
+    kv.value = "True";
+  else
+    kv.value = "False";
+  hb.values.push_back(kv);
+
+  kv.key = "clutch";
+  switch (inmsg->drix_clutch)
+  {
+  case drix_msgs::DrixOutput::CLUTCH_ERROR_:
+    kv.value = "Error";
+    break;
+  case drix_msgs::DrixOutput::CLUTCH_BACKWARD_:
+    kv.value = "Backward";
+    break;
+  case drix_msgs::DrixOutput::CLUTCH_NEUTRAL_:
+    kv.value = "Neutral";
+    break;
+  case drix_msgs::DrixOutput::CLUTCH_FORWARD_:
+    kv.value = "Forward";
+    break;
+  default:
+    kv.value = "Unknown";
+  }
+  hb.values.push_back(kv);
+
+  if(inmsg->error_code != 0)
+  {
+    kv.key = "error_code";
+    std::stringstream error_code_ss;
+    error_code_ss << inmsg->error_code;
+    kv.value = error_code_ss.str();
     hb.values.push_back(kv);
 
-    kv.key = "fuel_level";
-    std::stringstream fuel_level_str;
-    fuel_level_str << int(inmsg->gasolineLevel_percent);
-    kv.value = fuel_level_str.str();
+    kv.key = "error_string";
+    kv.value = inmsg->error_string;
     hb.values.push_back(kv);
-
-    kv.key = "drix_mode";
-    switch (inmsg->drix_mode)
-    {
-    case drix_msgs::DrixOutput::MODE_DOCKING_:
-       kv.value = "Docking";
-       break;
-    case drix_msgs::DrixOutput::MODE_MANUAL_:
-       kv.value = "Manual";
-       break;
-    case drix_msgs::DrixOutput::MODE_AUTO_:
-       kv.value = "Auto";
-       break;
-    default:
-        kv.value = "Unknown";
-    }
-    hb.values.push_back(kv);
-
-    kv.key = "emergency";
-    if(inmsg->emergency_mode)
-        kv.value = "True";
-    else
-        kv.value = "False";
-    hb.values.push_back(kv);
-
-    kv.key = "clutch";
-    switch (inmsg->drix_clutch)
-    {
-    case drix_msgs::DrixOutput::CLUTCH_ERROR_:
-        kv.value = "Error";
-        break;
-    case drix_msgs::DrixOutput::CLUTCH_BACKWARD_:
-        kv.value = "Backward";
-        break;
-    case drix_msgs::DrixOutput::CLUTCH_NEUTRAL_:
-        kv.value = "Neutral";
-        break;
-    case drix_msgs::DrixOutput::CLUTCH_FORWARD_:
-        kv.value = "Forward";
-        break;
-    default:
-        kv.value = "Unknown";
-    }
-    hb.values.push_back(kv);
-
-    if(inmsg->error_code != 0)
-    {
-        kv.key = "error_code";
-        std::stringstream error_code_ss;
-        error_code_ss << inmsg->error_code;
-        kv.value = error_code_ss.str();
-        hb.values.push_back(kv);
-
-        kv.key = "error_string";
-        kv.value = inmsg->error_string;
-        hb.values.push_back(kv);
-    }
+  }
     
-    kv.key = "keel_state";
-    switch (inmsg->keel_state)
-    {
-    case drix_msgs::DrixOutput::KEEL_ERROR_:
-        kv.value = "Error";
-        break;
-    case drix_msgs::DrixOutput::KEEL_UP_:
-        kv.value = "Up";
-        break;
-    case drix_msgs::DrixOutput::KEEL_MIDDLE_:
-        kv.value = "Middle";
-        break;
-    case drix_msgs::DrixOutput::KEEL_DOWN_:
-        kv.value = "Down";
-        break;
-    case drix_msgs::DrixOutput::KEEL_GOING_DOWN_ERROR_:
-        kv.value = "Going down error";
-        break;
-    case drix_msgs::DrixOutput::KEEL_GOING_UP_ERROR_:
-        kv.value = "Going up error";
-        break;
-    case drix_msgs::DrixOutput::KEEL_UP_DOWN_ERROR_:
-        kv.value = "Up down error";
-        break;
-    default:
-        kv.value = "Unknown";
-    }
+  kv.key = "keel_state";
+  switch (inmsg->keel_state)
+  {
+  case drix_msgs::DrixOutput::KEEL_ERROR_:
+    kv.value = "Error";
+    break;
+  case drix_msgs::DrixOutput::KEEL_UP_:
+    kv.value = "Up";
+    break;
+  case drix_msgs::DrixOutput::KEEL_MIDDLE_:
+    kv.value = "Middle";
+    break;
+  case drix_msgs::DrixOutput::KEEL_DOWN_:
+    kv.value = "Down";
+    break;
+  case drix_msgs::DrixOutput::KEEL_GOING_DOWN_ERROR_:
+    kv.value = "Going down error";
+    break;
+  case drix_msgs::DrixOutput::KEEL_GOING_UP_ERROR_:
+    kv.value = "Going up error";
+    break;
+  case drix_msgs::DrixOutput::KEEL_UP_DOWN_ERROR_:
+    kv.value = "Up down error";
+    break;
+  default:
+    kv.value = "Unknown";
+  }
+  hb.values.push_back(kv);
+
+  if(inmsg->rc_emergency_stop)
+  {
+    kv.key = "rc_emergency_stop";
+    kv.value = "True";
     hb.values.push_back(kv);
+  }
 
-    if(inmsg->rc_emergency_stop)
-    {
-        kv.key = "rc_emergency_stop";
-        kv.value = "True";
-        hb.values.push_back(kv);
-    }
-
-    if(inmsg->cable_emergency_stop)
-    {
-        kv.key = "cable_emergency_stop";
-        kv.value = "True";
-        hb.values.push_back(kv);
-    }
-
-    if(inmsg->hmi_emergency_stop)
-    {
-        kv.key = "hmi_emergency_stop";
-        kv.value = "True";
-        hb.values.push_back(kv);
-    }
-
-    // if(inmsg->shutdown_requested)
-    // {
-    //     kv.key = "shutdown_requested";
-    //     kv.value = "True";
-    //     hb.values.push_back(kv);
-    // }
-
-    kv.key = "shutdown_status";
-    switch (inmsg->shutdown_status)
-    {
-    case drix_msgs::DrixOutput::NO_SHUTDOWN_:
-        kv.value = "No Shutdown";
-        break;
-    case drix_msgs::DrixOutput::SHUTDOWN_REQUESTED_:
-        kv.value = "Shutdown Requested";
-        break;
-    case drix_msgs::DrixOutput::REBOOT_REQUESTED_:
-        kv.value = "Reboot Requested";
-        break;
-    default:
-        kv.value = "Unknown";
-    }
+  if(inmsg->cable_emergency_stop)
+  {
+    kv.key = "cable_emergency_stop";
+    kv.value = "True";
     hb.values.push_back(kv);
+  }
+
+  if(inmsg->hmi_emergency_stop)
+  {
+    kv.key = "hmi_emergency_stop";
+    kv.value = "True";
+    hb.values.push_back(kv);
+  }
+
+  kv.key = "shutdown_status";
+  switch (inmsg->shutdown_status)
+  {
+  case drix_msgs::DrixOutput::NO_SHUTDOWN_:
+    kv.value = "No Shutdown";
+    break;
+  case drix_msgs::DrixOutput::SHUTDOWN_REQUESTED_:
+    kv.value = "Shutdown Requested";
+    break;
+  case drix_msgs::DrixOutput::REBOOT_REQUESTED_:
+    kv.value = "Reboot Requested";
+    break;
+  default:
+    kv.value = "Unknown";
+  }
+  hb.values.push_back(kv);
 
 
     heartbeat_pub.publish(hb);
