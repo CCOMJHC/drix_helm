@@ -62,7 +62,7 @@ int main(int argc, char **argv)
 
   connect(host, port);
 
-  ros::Subscriber ais_sub = n.subscribe("/raw_ais", 5, aisCallback);
+  ros::Subscriber ais_sub = n.subscribe("/sensors/ais/ais_receiver/raw_ais", 5, aisCallback);
   ros::spin();
 
   return 0;
