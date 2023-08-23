@@ -336,6 +336,7 @@ void aisCallback(const mdt_msgs::StampedString::ConstPtr& msg)
   nmea_msgs::Sentence sentence;
   sentence.header = msg->header;
   sentence.sentence = msg->data;
+  ais_pub.publish(sentence);
 }
 
 
