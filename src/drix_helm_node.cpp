@@ -2,6 +2,7 @@
 #include "mdt_msgs/Gps.h"
 #include "mdt_msgs/GeoPath.h"
 #include "drix_msgs/DrixOutput.h"
+#include "mdt_msgs/StampedString.h"
 #include "geometry_msgs/TwistWithCovarianceStamped.h"
 #include "project11_msgs/Heartbeat.h"
 #include "project11_msgs/Helm.h"
@@ -11,6 +12,7 @@
 #include "std_msgs/String.h"
 #include "std_msgs/Float32.h"
 #include "geographic_visualization_msgs/GeoVizItem.h"
+#include "nmea_msgs/Sentence.h"
 #include <vector>
 #include "project11/utils.h"
 
@@ -22,6 +24,7 @@ ros::Publisher velocity_pub;
 ros::Publisher heartbeat_pub;
 ros::Publisher backseat_path_pub;
 ros::Publisher display_pub;
+ros::Publisher ais_pub;
 
 mdt_msgs::Gps last_gps;
 
@@ -220,8 +223,7 @@ void vehicleSatusCallback(const drix_msgs::DrixOutput::ConstPtr& inmsg)
   }
   hb.values.push_back(kv);
 
-
-    heartbeat_pub.publish(hb);
+  heartbeat_pub.publish(hb);
 }
 
 
@@ -329,36 +331,45 @@ void gpsCallback(const mdt_msgs::Gps::ConstPtr& inmsg)
     sendPath();
 }
 
+void aisCallback(const mdt_msgs::StampedString::ConstPtr& msg)
+{
+  nmea_msgs::Sentence sentence;
+  sentence.header = msg->header;
+  sentence.sentence = msg->data;
+}
+
+
 int main(int argc, char **argv)
 {
-    current_speed = 5.0;
-    throttle = 0.0;
-    rudder = 0.0;
-    standby = true;
+  current_speed = 5.0;
+  throttle = 0.0;
+  rudder = 0.0;
+  standby = true;
 
-    ros::init(argc, argv, "drix_helm");
-    ros::NodeHandle n;
+  ros::init(argc, argv, "drix_helm");
+  ros::NodeHandle n;
+  
+  frame_id = ros::param::param<std::string>("~frame_id", "base_link");
+
+  orientation_pub = n.advertise<sensor_msgs::Imu>("project11/nav/oem/orientation",1);
+  position_pub = n.advertise<sensor_msgs::NavSatFix>("project11/nav/oem/position",1);
+  velocity_pub = n.advertise<geometry_msgs::TwistWithCovarianceStamped>("project11/nav/oem/velocity",1);
+  heartbeat_pub = n.advertise<project11_msgs::Heartbeat>("project11/status/helm", 10);
+
+  backseat_path_pub = n.advertise<mdt_msgs::GeoPath>("/autopilot/guidance_manager/backseat_path", 10);
+  display_pub = n.advertise<geographic_visualization_msgs::GeoVizItem>("project11/display",5);
+  ais_pub = n.advertise<nmea_msgs::Sentence>("sensors/ais/nmea", 10);
+
+  ros::Subscriber asv_helm_sub = n.subscribe("project11/control/helm", 5, helmCallback);
+  ros::Subscriber standby_sub = n.subscribe("project11/piloting_mode/standby/active", 10,standbyCallback);
+
+  ros::Subscriber vehicle_state_sub =  n.subscribe("/hardware/drix_status",10,vehicleSatusCallback);
+  ros::Subscriber gps_sub = n.subscribe("/pos/gps",10,gpsCallback);
+  ros::Subscriber ais_sub = n.subscribe("/sensors/ais/ais_receiver/raw_ais", 5, aisCallback);
     
-    frame_id = ros::param::param<std::string>("~frame_id", "base_link");
-
-
-    orientation_pub = n.advertise<sensor_msgs::Imu>("project11/nav/oem/orientation",1);
-    position_pub = n.advertise<sensor_msgs::NavSatFix>("project11/nav/oem/position",1);
-    velocity_pub = n.advertise<geometry_msgs::TwistWithCovarianceStamped>("project11/nav/oem/velocity",1);
-    heartbeat_pub = n.advertise<project11_msgs::Heartbeat>("project11/status/helm", 10);
-
-    backseat_path_pub = n.advertise<mdt_msgs::GeoPath>("/autopilot/guidance_manager/backseat_path", 10);
-    display_pub = n.advertise<geographic_visualization_msgs::GeoVizItem>("project11/display",5);
-
-    ros::Subscriber asv_helm_sub = n.subscribe("project11/control/helm", 5, helmCallback);
-    ros::Subscriber standby_sub = n.subscribe("project11/piloting_mode/standby/active", 10,standbyCallback);
-
-    ros::Subscriber vehicle_state_sub =  n.subscribe("/hardware/drix_status",10,vehicleSatusCallback);
-    ros::Subscriber gps_sub = n.subscribe("/pos/gps",10,gpsCallback);
-    
-    ros::spin();
-    
-    return 0;
+  ros::spin();
+  
+  return 0;
 }
 
     
