@@ -347,7 +347,7 @@ int main(int argc, char **argv)
     velocity_pub = n.advertise<geometry_msgs::TwistWithCovarianceStamped>("project11/nav/oem/velocity",1);
     heartbeat_pub = n.advertise<project11_msgs::Heartbeat>("project11/status/helm", 10);
 
-    backseat_path_pub = n.advertise<mdt_msgs::GeoPath>("/backseat_path", 10);
+    backseat_path_pub = n.advertise<mdt_msgs::GeoPath>("/autopilot/guidance_manager/backseat_path", 10);
     display_pub = n.advertise<geographic_visualization_msgs::GeoVizItem>("project11/display",5);
 
     ros::Subscriber asv_helm_sub = n.subscribe("project11/control/helm", 5, helmCallback);
