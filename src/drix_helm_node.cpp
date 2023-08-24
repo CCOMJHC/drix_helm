@@ -36,30 +36,30 @@ bool standby;
 
 struct LatLong
 {
-    double latitude;
-    double longitude;
+  double latitude;
+  double longitude;
 };
 
 std::vector<LatLong> current_path;
 LatLong current_position;
 
-double current_speed;
+double max_speed = 6.0;
 
 std::string frame_id;
 
 std::string boolToString(bool value)
 {
-    if(value)
-        return "true";
-    return "false";
+  if(value)
+    return "true";
+  return "false";
 }
 
 void helmCallback(const project11_msgs::Helm::ConstPtr& msg)
 {
-    throttle = msg->throttle;
-    rudder = msg->rudder;
-    
-    last_helm_time = msg->header.stamp;
+  throttle = msg->throttle;
+  rudder = msg->rudder;
+  
+  last_helm_time = msg->header.stamp;
 }
 
 void standbyCallback(const std_msgs::Bool::ConstPtr& msg)
@@ -226,12 +226,6 @@ void vehicleStatusCallback(const drix_msgs::DrixOutput::ConstPtr& inmsg)
   heartbeat_pub.publish(hb);
 }
 
-
-void currentSpeedCallback(const std_msgs::Float32::ConstPtr& inmsg)
-{
-    current_speed = inmsg->data;
-}
-
 void sendPath()
 {
     mdt_msgs::GeoPath gpath;
@@ -254,39 +248,39 @@ void sendPath()
 
     if(!standby)
     {
-        p11::LatLongDegrees vehicle_position, p2;
-        vehicle_position[0] = current_position.latitude;
-        vehicle_position[1] = current_position.longitude;
+      p11::LatLongDegrees vehicle_position, p2;
+      vehicle_position[0] = current_position.latitude;
+      vehicle_position[1] = current_position.longitude;
 
-        p11::AngleRadians desired_heading = p11::AngleDegrees(last_gps.heading) + p11::AngleRadians(rudder);
-        p2 = p11::WGS84::direct(vehicle_position,desired_heading,20);
-        mdt_msgs::GeoPathPoint gpoint1,gpoint2;
-        gpoint1.speed = throttle*current_speed;
-        gpoint1.lat = vehicle_position[0];
-        gpoint1.lon = vehicle_position[1];
-        gpath.points.push_back(gpoint1);
+      p11::AngleRadians desired_heading = p11::AngleDegrees(last_gps.heading) + p11::AngleRadians(rudder);
+      p2 = p11::WGS84::direct(vehicle_position,desired_heading,20);
+      mdt_msgs::GeoPathPoint gpoint1,gpoint2;
+      gpoint1.speed = throttle*max_speed;
+      gpoint1.lat = vehicle_position[0];
+      gpoint1.lon = vehicle_position[1];
+      gpath.points.push_back(gpoint1);
 
-        gpoint2.speed = throttle*current_speed;
-        gpoint2.lat = p2[0];
-        gpoint2.lon = p2[1];
-        gpath.points.push_back(gpoint2);
+      gpoint2.speed = throttle*max_speed;
+      gpoint2.lat = p2[0];
+      gpoint2.lon = p2[1];
+      gpath.points.push_back(gpoint2);
 
-        geographic_msgs::GeoPoint gp;
-        gp.latitude = vehicle_position[0];
-        gp.longitude = vehicle_position[1];
-        plist.points.push_back(gp);
+      geographic_msgs::GeoPoint gp;
+      gp.latitude = vehicle_position[0];
+      gp.longitude = vehicle_position[1];
+      plist.points.push_back(gp);
 
-        geographic_msgs::GeoPoint gp2;
-        gp2.latitude = p2[0];
-        gp2.longitude = p2[1];
-        plist.points.push_back(gp2);
+      geographic_msgs::GeoPoint gp2;
+      gp2.latitude = p2[0];
+      gp2.longitude = p2[1];
+      plist.points.push_back(gp2);
     }
     else
     {
-        mdt_msgs::GeoPathPoint gpoint;
-        gpoint.speed = 0.0;
-        gpath.points.push_back(gpoint);
-        gpath.points.push_back(gpoint);
+      mdt_msgs::GeoPathPoint gpoint;
+      gpoint.speed = 0.0;
+      gpath.points.push_back(gpoint);
+      gpath.points.push_back(gpoint);
     }
 
     vizItem.lines.push_back(plist);
@@ -342,7 +336,6 @@ void aisCallback(const mdt_msgs::StampedString::ConstPtr& msg)
 
 int main(int argc, char **argv)
 {
-  current_speed = 5.0;
   throttle = 0.0;
   rudder = 0.0;
   standby = true;
