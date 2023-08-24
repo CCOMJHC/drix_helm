@@ -67,7 +67,7 @@ void standbyCallback(const std_msgs::Bool::ConstPtr& msg)
   standby = msg->data;
 }
 
-void vehicleSatusCallback(const drix_msgs::DrixOutput::ConstPtr& inmsg)
+void vehicleStatusCallback(const drix_msgs::DrixOutput::ConstPtr& inmsg)
 {
   project11_msgs::Heartbeat hb;
   hb.header.stamp = ros::Time::now();
@@ -364,7 +364,7 @@ int main(int argc, char **argv)
   ros::Subscriber asv_helm_sub = n.subscribe("project11/control/helm", 5, helmCallback);
   ros::Subscriber standby_sub = n.subscribe("project11/piloting_mode/standby/active", 10,standbyCallback);
 
-  ros::Subscriber vehicle_state_sub =  n.subscribe("/hardware/drix_status",10,vehicleSatusCallback);
+  ros::Subscriber vehicle_state_sub =  n.subscribe("/hardware/drix_status",10,vehicleStatusCallback);
   ros::Subscriber gps_sub = n.subscribe("/pos/gps",10,gpsCallback);
   ros::Subscriber ais_sub = n.subscribe("/sensors/ais/ais_receiver/raw_ais", 5, aisCallback);
     
