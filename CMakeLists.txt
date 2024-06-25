@@ -7,6 +7,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   geographic_msgs
   project11_msgs
+  cortix_msgs
   drix_msgs
   mdt_msgs
   roscpp

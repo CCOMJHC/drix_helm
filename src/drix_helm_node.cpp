@@ -1,6 +1,6 @@
 #include "ros/ros.h"
 #include "mdt_msgs/Gps.h"
-#include "mdt_msgs/GeoPath.h"
+#include "cortix_msgs/GeoPath.h"
 #include "drix_msgs/DrixOutput.h"
 #include "mdt_msgs/StampedString.h"
 #include "geometry_msgs/TwistWithCovarianceStamped.h"
@@ -228,7 +228,7 @@ void vehicleStatusCallback(const drix_msgs::DrixOutput::ConstPtr& inmsg)
 
 void sendPath()
 {
-    mdt_msgs::GeoPath gpath;
+    cortix_msgs::GeoPath gpath;
     gpath.stamp = ros::Time::now();
     gpath.is_first_point_start_point = true;
     if (!last_helm_time.isZero()&&gpath.stamp-last_helm_time>ros::Duration(.5))
@@ -254,7 +254,7 @@ void sendPath()
 
       p11::AngleRadians desired_heading = p11::AngleDegrees(last_gps.heading) + p11::AngleRadians(rudder);
       p2 = p11::WGS84::direct(vehicle_position,desired_heading,20);
-      mdt_msgs::GeoPathPoint gpoint1,gpoint2;
+      cortix_msgs::GeoPathPoint gpoint1,gpoint2;
       gpoint1.speed = throttle*max_speed;
       gpoint1.lat = vehicle_position[0];
       gpoint1.lon = vehicle_position[1];
@@ -277,7 +277,7 @@ void sendPath()
     }
     else
     {
-      mdt_msgs::GeoPathPoint gpoint;
+      cortix_msgs::GeoPathPoint gpoint;
       gpoint.speed = 0.0;
       gpath.points.push_back(gpoint);
       gpath.points.push_back(gpoint);
@@ -350,16 +350,16 @@ int main(int argc, char **argv)
   velocity_pub = n.advertise<geometry_msgs::TwistWithCovarianceStamped>("project11/nav/oem/velocity",1);
   heartbeat_pub = n.advertise<project11_msgs::Heartbeat>("project11/status/helm", 10);
 
-  backseat_path_pub = n.advertise<mdt_msgs::GeoPath>("/autopilot/guidance_manager/backseat_path", 10);
+  backseat_path_pub = n.advertise<cortix_msgs::GeoPath>("/autopilot/guidance_manager/backseat_path", 10);
   display_pub = n.advertise<geographic_visualization_msgs::GeoVizItem>("project11/display",5);
   ais_pub = n.advertise<nmea_msgs::Sentence>("sensors/ais/nmea", 10);
 
   ros::Subscriber asv_helm_sub = n.subscribe("project11/control/helm", 5, helmCallback);
   ros::Subscriber standby_sub = n.subscribe("project11/piloting_mode/standby/active", 10,standbyCallback);
 
-  ros::Subscriber vehicle_state_sub =  n.subscribe("/hardware/drix_status",10,vehicleStatusCallback);
-  ros::Subscriber gps_sub = n.subscribe("/pos/gps",10,gpsCallback);
-  ros::Subscriber ais_sub = n.subscribe("/sensors/ais/ais_receiver/raw_ais", 5, aisCallback);
+  ros::Subscriber vehicle_state_sub =  n.subscribe("/cortix/plc/vehicle_status", 10, vehicleStatusCallback);
+  ros::Subscriber gps_sub = n.subscribe("/cortix/navigation/gps",10,gpsCallback);
+  ros::Subscriber ais_sub = n.subscribe("/cortix/sense/sensors_data/raw_ais", 5, aisCallback);
     
   ros::spin();
   
